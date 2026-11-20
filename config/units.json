@@ -1,0 +1,85 @@
+{
+  "_note": "Thermal units of the ISP1 file. fuel: lignite|gas. status: active|retired. Retired units are never reported as stopped. Add new units here; the pipeline lists unknown ones in the day's validation.",
+  "units": {
+    "AG_DIMITRIOS1": {
+      "fuel": "lignite",
+      "status": "retired"
+    },
+    "AG_DIMITRIOS2": {
+      "fuel": "lignite",
+      "status": "retired"
+    },
+    "AG_DIMITRIOS3": {
+      "fuel": "lignite",
+      "status": "retired"
+    },
+    "AG_DIMITRIOS4": {
+      "fuel": "lignite",
+      "status": "retired"
+    },
+    "AG_DIMITRIOS5": {
+      "fuel": "lignite",
+      "status": "retired"
+    },
+    "AG_NIKOLAOS2": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "ALIVERI5": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "ALOUMINIO": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "HERON_CC": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "KOMOTINI": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "KOMOTINI_POWER": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "KORINTHOS_POWER": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "LAVRIO4": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "LAVRIO5": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "MEGALOPOLI4": {
+      "fuel": "lignite",
+      "status": "retired"
+    },
+    "MEGALOPOLI_V": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "PROTERGIA_CC": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "PTOLEMAIDA5": {
+      "fuel": "lignite",
+      "status": "active"
+    },
+    "THESSALONIKI_CC": {
+      "fuel": "gas",
+      "status": "active"
+    },
+    "THISVI_CC": {
+      "fuel": "gas",
+      "status": "active"
+    }
+  }
+}
