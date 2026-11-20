@@ -18,7 +18,7 @@ Each decision: date, what, why, what was rejected. Added to, never rewritten.
 
 **D08 (19 Nov 2026) Data layout.** Monthly files + `manifest.json` + `meta.json`. Measured on 19 Nov 2026: one day is 12 KB raw, 4.0 KB gzip; a 31-day month is about 125 KB gzip, below the 250 KB limit, while one file for the backfill (about 320 days) would be about 1.3 MB. Charts use hourly means; only price, residual surplus and imports are kept at 15 minutes. Run `python -m scripts.data_size` when the layout changes.
 
-**D09 (19 Nov 2026) Null, not zero.** A category missing from a file is `null` (e.g. storage before BESS entered the DAM). A category that exists but has no row in an interval is 0.
+**D09 (19 Nov 2026, changed 20 Nov 2026) Null, not zero.** Technologies that have always existed in the DAM (lignite, gas, big hydro, RES, pump, imports, exports, Crete) have no row when nothing is traded, so a missing row means 0. Storage entered the market later, so a missing storage row is `null`. Change on 20 Nov 2026: the first live day had no `Lignite` rows in the DAM and the first rule produced `NaN`. Python now never writes `NaN`; writing it fails loudly.
 
 **D10 (19 Nov 2026) Updates.** cron-job.org (Europe/Athens) triggers the workflow; the workflow has no `schedule:`. `RUN_TIMES_ATHENS` in `scripts/config.py` only documents the triggers and feeds `next_update` in `meta.json`. `daily` processes today and tomorrow and skips days that are complete.
 

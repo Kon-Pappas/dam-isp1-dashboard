@@ -60,6 +60,11 @@ class ParseTests(unittest.TestCase):
     def test_missing_category_is_null(self):
         self.assertIsNone(parse_dam(FX / "20260105_EL-DAM_Results_EN_v01.xlsx")["storage_sell"])
 
+    def test_always_present_category_missing_means_zero(self):
+        dam = parse_dam(FX / "20260105_EL-DAM_Results_EN_v01.xlsx")     # no CRETE CONVENTIONAL, no BG/IT imports
+        self.assertEqual(float(dam["crete_conv"].sum()), 0.0)
+        self.assertEqual(float(dam["imports"]["BG"].sum()), 0.0)
+
     def test_isp1_sums(self):
         isp = parse_isp1(FX / "20261118_ISP1ISPResults_01.xlsx", REG)
         self.assertLess(isp["thermal_gap_mw"], 1.0)
@@ -110,6 +115,27 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(d["quality"], "partial")
         self.assertIsNone(d["summary"]["categories"]["storage_net"]["dam"])      # null, not 0
         self.assertIsNone(d["hourly"]["isp1"])
+
+
+class JsonTests(unittest.TestCase):
+    def test_no_nan_in_any_day(self):                 # browsers cannot read NaN
+        for ymd in ("20260105", "20260329", "20261025", "20261118"):
+            json.dumps(build(ymd), allow_nan=False)
+
+
+class OldFileTests(unittest.TestCase):
+    def test_nan_in_an_old_month_file_is_healed(self):
+        old = C.DATA_DIR
+        with tempfile.TemporaryDirectory() as t:
+            C.DATA_DIR = Path(t)
+            try:
+                (Path(t) / "2026-11.json").write_text('{"schema":1,"month":"2026-11","days":{"2026-11-20":{"x":NaN,"y":[1,NaN]}}}')
+                m = store.load_month(dt.date(2026, 11, 20))
+                self.assertIsNone(m["days"]["2026-11-20"]["x"])
+                self.assertEqual(m["days"]["2026-11-20"]["y"], [1, None])
+                store.put_day(dt.date(2026, 11, 18), {"stages": {"dam": True}, "quality": "partial"})   # must not raise
+            finally:
+                C.DATA_DIR = old
 
 
 class FetchTests(unittest.TestCase):

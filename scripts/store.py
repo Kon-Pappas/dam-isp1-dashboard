@@ -15,15 +15,26 @@ def write_json(path, obj):
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(obj, f, separators=(",", ":"), ensure_ascii=False)
+        json.dump(obj, f, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
     os.replace(tmp, path)
+
+
+def _clean(x):
+    """Old files written before 20 Nov 2026 may hold NaN; it becomes null on the next write."""
+    if isinstance(x, float) and x != x:
+        return None
+    if isinstance(x, dict):
+        return {k: _clean(v) for k, v in x.items()}
+    if isinstance(x, list):
+        return [_clean(v) for v in x]
+    return x
 
 
 def load_month(day):
     p = month_path(day)
     if p.exists():
         with open(p, encoding="utf-8") as f:
-            return json.load(f)
+            return _clean(json.load(f))
     return {"schema": C.SCHEMA, "month": f"{day:%Y-%m}", "days": {}}
 
 

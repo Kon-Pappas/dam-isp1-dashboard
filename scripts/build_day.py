@@ -29,7 +29,13 @@ def gwh(a):
 
 
 def r(a, d=1):
-    return None if a is None else [round(float(v), d) for v in a]
+    return None if a is None else [round(float(v), d) if np.isfinite(v) else None for v in a]
+
+
+def nmean(a):
+    a = np.asarray(a, float)
+    a = a[np.isfinite(a)]
+    return float(a.mean()) if a.size else None
 
 
 def hmean(a):
@@ -37,7 +43,7 @@ def hmean(a):
 
 
 def rnd(x, d=3):
-    return None if x is None else round(float(x), d)
+    return round(float(x), d) if x is not None and np.isfinite(x) else None
 
 
 def cat(dam, isp):
@@ -208,8 +214,8 @@ def build_day(day, dam, isp, crete, registry, published=None):
     if isp is not None:
         d_l, d_g = isp["lignite"] - (dam["lignite"] if dam["lignite"] is not None else np.nan), isp["gas"] - (dam["gas"] if dam["gas"] is not None else np.nan)
         summary["thermal_change_mw"] = {
-            "midday": {"lignite": rnd(np.nanmean(d_l[mid]), 0) if mid.any() else None, "gas": rnd(np.nanmean(d_g[mid]), 0) if mid.any() else None},
-            "evening": {"lignite": rnd(np.nanmean(d_l[eve]), 0) if eve.any() else None, "gas": rnd(np.nanmean(d_g[eve]), 0) if eve.any() else None},
+            "midday": {"lignite": rnd(nmean(d_l[mid]), 0) if mid.any() else None, "gas": rnd(nmean(d_g[mid]), 0) if mid.any() else None},
+            "evening": {"lignite": rnd(nmean(d_l[eve]), 0) if eve.any() else None, "gas": rnd(nmean(d_g[eve]), 0) if eve.any() else None},
         }
         s = isp["surplus"]
         if s is not None:

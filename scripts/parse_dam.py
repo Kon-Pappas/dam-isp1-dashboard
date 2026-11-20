@@ -32,12 +32,14 @@ def parse_dam(path):
         warnings.append("MCP differs between rows of the same interval")
     mcp = g.first().reindex(range(1, n + 1)).to_numpy(float)
 
-    def series(side, cls, asset=None):
+    def series(side, cls, asset=None, zero=True):
+        """zero=True: a technology that has always existed in the DAM; no row means no trade (0).
+        zero=False: a category that entered the market later (storage); no row means null."""
         m = (df["SIDE_DESCR"] == side) & (df["CLASSIFICATION"] == cls)
         if asset is not None:
             m &= df["ASSET_DESCR"] == asset
         if not m.any():
-            return None          # category does not exist in this file: null, not 0
+            return np.zeros(n) if zero else None
         return (df[m].groupby("SORT")["TOTAL_TRADES"].sum()
                 .reindex(range(1, n + 1)).fillna(0.0).to_numpy(float))
 
@@ -73,8 +75,8 @@ def parse_dam(path):
         "crete_conv": series("Sell", "CRETE CONVENTIONAL"),
         "crete_load": series("Buy", "CRETE LOAD"),
         "pump": series("Buy", "PUMP"),
-        "storage_sell": series("Sell", "Storage"),
-        "storage_buy": series("Buy", "Storage"),
+        "storage_sell": series("Sell", "Storage", zero=False),
+        "storage_buy": series("Buy", "Storage", zero=False),
         "imports": imports,
         "exports": exports,
         "classes": sorted({f"{s}/{c}" for s, c in zip(df["SIDE_DESCR"], df["CLASSIFICATION"])}),
