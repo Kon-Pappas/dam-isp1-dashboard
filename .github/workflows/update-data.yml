@@ -1,0 +1,68 @@
+name: Update data
+
+# No `schedule:` here on purpose. cron-job.org triggers this workflow
+# (docs/DECISIONS.md D10), so there is a single source of truth for timing.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "daily | backfill | day"
+        default: "daily"
+      date_from:
+        description: "backfill start (YYYY-MM-DD)"
+        default: "2026-01-01"
+      date_to:
+        description: "backfill end (YYYY-MM-DD, empty = tomorrow)"
+        default: ""
+      date:
+        description: "single day for mode=day (YYYY-MM-DD)"
+        default: ""
+      force:
+        description: "rebuild days that are already complete (true/false)"
+        default: "false"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run
+        env:
+          MODE: ${{ inputs.mode }}
+          DATE_FROM: ${{ inputs.date_from }}
+          DATE_TO: ${{ inputs.date_to }}
+          DAY: ${{ inputs.date }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          ARGS=""
+          if [ "$FORCE" = "true" ]; then ARGS="--force"; fi
+          if [ "$MODE" = "backfill" ]; then
+            TO=""; if [ -n "$DATE_TO" ]; then TO="--to $DATE_TO"; fi
+            python -m scripts.update_data backfill --from "$DATE_FROM" $TO $ARGS
+          elif [ "$MODE" = "day" ]; then
+            python -m scripts.update_data day "$DAY" $ARGS
+          else
+            python -m scripts.update_data daily $ARGS
+          fi
+      - name: Commit data
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "data: update $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do git pull --rebase && git push && break || sleep 5; done
