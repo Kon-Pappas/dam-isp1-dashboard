@@ -110,6 +110,21 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(d["quality"], "partial")
         self.assertFalse(d["stages"]["crete"])
 
+    def test_crete_file_that_disagrees_with_dam_is_not_used(self):
+        day = dt.date(2026, 11, 18)
+        dam = parse_dam(FX / "20261118_EL-DAM_Results_EN_v01.xlsx")
+        isp = parse_isp1(FX / "20261118_ISP1ISPResults_01.xlsx", REG)
+        cr = parse_crete(FX / "20261118_DailyDispatchOfCreteElectricalSystem_01.xlsx", 24)
+        cr["load"] = cr["load"] + 100.0
+        d = build_day(day, dam, isp, cr, REG)
+        self.assertFalse(d["stages"]["crete"])
+        self.assertEqual(d["quality"], "check")
+        self.assertIn("crete_vs_dam_load", [c["id"] for c in d["checks"] if not c["ok"]])
+
+    def test_january_unit_names_are_in_the_registry(self):
+        for n in ("ELPEDISON_THESS", "ELPEDISON_THISVI"):
+            self.assertEqual(REG[n]["fuel"], "gas")
+
     def test_dam_only_day(self):
         d = build("20260105")
         self.assertEqual(d["quality"], "partial")
