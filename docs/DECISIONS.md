@@ -36,3 +36,5 @@ Each decision: date, what, why, what was rejected. Added to, never rewritten.
 
 **D17 (20 Nov 2026) Checks after the first backfill (324 days, 1 Jan - 20 Nov 2026).** (a) The DAM buy-sell balance tolerance is 3 MW (4 days in April had a gap of about 2.1 MW, 0.05 % of the load). (b) If the ADMIE Crete file disagrees with the DAM Crete load by more than 1 MW, the Crete file is not used, the day is marked `check` and the reason is written (on 15 Jan the file for the day was published on 4 Nov 2026 and has clearly wrong hours; on 22 Jul it was published the day after). The DAM Crete numbers stay. (c) ELPEDISON_THESS and ELPEDISON_THISVI (seen in 28 January days) are registered as gas, status `retired`.
 
+**D18 (20 Nov 2026) A stored stage is kept only if the file could not be obtained.** After D17 the re-run kept the old (wrong) 15 Jan and 22 Jul days because the rejected Crete file counted as "stage lost". Now: file missing or unreadable this time = keep the stored day; file read but rejected by a check = the new day replaces it.
+

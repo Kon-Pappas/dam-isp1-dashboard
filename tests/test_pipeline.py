@@ -138,6 +138,55 @@ class JsonTests(unittest.TestCase):
             json.dumps(build(ymd), allow_nan=False)
 
 
+class UpdateTests(unittest.TestCase):
+    """process_day with a temporary data folder and a temporary 'internet' folder."""
+
+    def setUp(self):
+        import shutil
+        from scripts import update_data
+        self.ud = update_data
+        self.tmp = tempfile.TemporaryDirectory()
+        self.old_dir = C.DATA_DIR
+        C.DATA_DIR = Path(self.tmp.name) / "data"
+        self.net = Path(self.tmp.name) / "net"
+        self.net.mkdir()
+        for n in ("20261118_EL-DAM_Results_EN_v01.xlsx", "20261118_ISP1ISPResults_01.xlsx",
+                  "20261118_DailyDispatchOfCreteElectricalSystem_01.xlsx"):
+            shutil.copy(FX / n, self.net / n)
+        self.day = dt.date(2026, 11, 18)
+
+    def tearDown(self):
+        C.DATA_DIR = self.old_dir
+        self.tmp.cleanup()
+
+    def run_day(self):
+        from scripts.fetch import Local
+        return self.ud.process_day(self.day, Local(self.net), REG, force=True, log=lambda *_: None)
+
+    def stored(self):
+        return store.load_month(self.day)["days"]["2026-11-18"]
+
+    def test_file_that_fails_a_check_replaces_the_stored_stage(self):
+        import openpyxl
+        self.assertIn("complete", self.run_day())
+        p = self.net / "20261118_DailyDispatchOfCreteElectricalSystem_01.xlsx"
+        wb = openpyxl.load_workbook(p)
+        ws = wb.worksheets[0]
+        for row in ws.iter_rows():
+            if str(row[0].value).upper().startswith("LOAD FORECAST OF CRETE"):
+                for c in row[1:25]:
+                    c.value = (c.value or 0) + 100
+        wb.save(p)
+        self.assertIn("written", self.run_day())
+        self.assertFalse(self.stored()["stages"]["crete"])
+
+    def test_missing_file_keeps_the_stored_stage(self):
+        self.run_day()
+        (self.net / "20261118_DailyDispatchOfCreteElectricalSystem_01.xlsx").unlink()
+        self.assertIn("kept stored day", self.run_day())
+        self.assertTrue(self.stored()["stages"]["crete"])
+
+
 class OldFileTests(unittest.TestCase):
     def test_nan_in_an_old_month_file_is_healed(self):
         old = C.DATA_DIR

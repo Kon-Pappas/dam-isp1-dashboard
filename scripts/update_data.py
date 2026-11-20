@@ -54,9 +54,12 @@ def process_day(day, fetcher, reg, force=False, log=print):
             published["crete"] = cref.published
         except ParseError as e:
             log(f"  {day}: Crete file not used: {e}")
+    obtained = {"isp1": isp is not None, "crete": crete is not None}
     new = build_day(day, dam, isp, crete, reg, published)
     if old:
-        lost = [k for k, v in old["stages"].items() if v and not new["stages"][k]]
+        # keep the stored day only when a file could not be obtained this time (download or reading failed).
+        # A file that was read but rejected by a check (build_day) must replace the stored version.
+        lost = [k for k, v in old["stages"].items() if v and not new["stages"][k] and not obtained.get(k, True)]
         if lost:
             return f"kept stored day (this run lacks {lost})"
     store.put_day(day, new)
