@@ -33,6 +33,16 @@
       "fuel": "gas",
       "status": "active"
     },
+    "ELPEDISON_THESS": {
+      "fuel": "gas",
+      "status": "retired",
+      "note": "name seen only in Jan 2026 ISP1 files; assumed old name of a gas CCGT unit, to be confirmed"
+    },
+    "ELPEDISON_THISVI": {
+      "fuel": "gas",
+      "status": "retired",
+      "note": "name seen only in Jan 2026 ISP1 files; assumed old name of a gas CCGT unit, to be confirmed"
+    },
     "HERON_CC": {
       "fuel": "gas",
       "status": "active"
