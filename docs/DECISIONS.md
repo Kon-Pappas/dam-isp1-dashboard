@@ -33,3 +33,6 @@ Each decision: date, what, why, what was rejected. Added to, never rewritten.
 **D15 (19 Nov 2026) Design.** Accent Rose `#f78fb3`, technology colours from the live repo, country colours from Flows, five tabs (Day at a glance, ADMIE reshuffle, Thermal & constraints, Borders & Crete, History & seasons). On mobile: above the fold one chart and one KPI row, long text in collapsible blocks. PNG previews approved on 19 Nov 2026.
 
 **D16 (19 Nov 2026) Scope.** ISP2, ISP3 and Ad-hoc ISP are out of scope. DAM and ISP1 only.
+
+**D17 (20 Nov 2026) Checks after the first backfill (324 days, 1 Jan - 20 Nov 2026).** (a) The DAM buy-sell balance tolerance is 3 MW (4 days in April had a gap of about 2.1 MW, 0.05 % of the load). (b) If the ADMIE Crete file disagrees with the DAM Crete load by more than 1 MW, the Crete file is not used, the day is marked `check` and the reason is written (on 15 Jan the file for the day was published on 4 Nov 2026 and has clearly wrong hours; on 22 Jul it was published the day after). The DAM Crete numbers stay. (c) ELPEDISON_THESS and ELPEDISON_THISVI (seen in 28 January days) are registered as gas, status `retired`.
+
