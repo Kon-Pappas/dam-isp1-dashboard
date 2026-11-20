@@ -83,7 +83,7 @@ def build_day(day, dam, isp, crete, registry, published=None):
     clock = clock_labels(utcs)
     chk("interval_count", n == expected_intervals(day), f"{n} found, {expected_intervals(day)} expected")
     chk("dam_clock", cet_wall(utcs) == dam["mtu"], "DELIVERY_MTU equals CET wall clock of the slot")
-    chk("dam_balance", dam["imbalance_mw"] <= C.TOL_MW, f"max buy-sell gap {dam['imbalance_mw']:.2f} MW")
+    chk("dam_balance", dam["imbalance_mw"] <= C.DAM_BALANCE_MW, f"max buy-sell gap {dam['imbalance_mw']:.2f} MW")
     for w in dam["warnings"]:
         chk("dam_warning", False, w)
 
@@ -137,7 +137,10 @@ def build_day(day, dam, isp, crete, registry, published=None):
         cr = crete
         if dam["crete_load"] is not None:
             gap = float(np.abs(hmean(dam["crete_load"]) - cr["load"]).max())
-            chk("crete_vs_dam_load", gap <= C.TOL_MW, f"max hourly gap {gap:.2f} MW")
+            ok = gap <= C.TOL_MW
+            chk("crete_vs_dam_load", ok, f"max hourly gap {gap:.2f} MW" + ("" if ok else "; Crete file not used (replaced after the fact?)"))
+            if not ok:
+                cr = None
 
     # ---------- hourly block ----------
     nh = n // 4

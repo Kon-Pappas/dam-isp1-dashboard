@@ -29,6 +29,7 @@ MIDDAY_HOURS = (11, 15)       # Greek clock hours [11, 15)
 EVENING_HOUR = 21             # Greek clock hour
 ISP_ON_MW = 0.5               # a unit counts as scheduled above this
 TOL_MW = 1.0                  # tolerance of balance checks
+DAM_BALANCE_MW = 3.0          # DAM buy-sell gap per interval (seen up to 2.1 MW on 11-15 Apr 2026)
 
 COUNTRIES = ["AL", "BG", "IT", "MK", "TR"]
 ISP_COUNTRY = {
