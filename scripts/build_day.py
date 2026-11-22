@@ -207,6 +207,14 @@ def build_day(day, dam, isp, crete, registry, published=None):
             "isp1_net": rnd(gwh(isp["virtual_crete"])) if isp else None,
         },
     }
+    dam_th = dam["lignite"] + dam["gas"]
+    isp_th = None if isp is None else isp["lignite"] + isp["gas"]
+    summary["windows"] = {"midday": [f"{C.MIDDAY_HOURS[0]:02d}:00", f"{C.MIDDAY_HOURS[1]:02d}:00"], "evening": f"{C.EVENING_HOUR:02d}:00"}
+    summary["thermal_level_mw"] = {
+        "midday": {"dam": rnd(np.mean(dam_th[mid]), 0), "isp1": None if isp_th is None else rnd(np.mean(isp_th[mid]), 0)},
+        "evening": {"dam": rnd(np.mean(dam_th[eve]), 0) if eve.any() else None,
+                    "isp1": None if isp_th is None or not eve.any() else rnd(np.mean(isp_th[eve]), 0)},
+    }
     signals = []
     zero_imp = None if dam_imports is None else (dam["mcp"] <= C.CONGESTION_MCP) & (dam_imports > 0)
     if zero_imp is not None and zero_imp.any():

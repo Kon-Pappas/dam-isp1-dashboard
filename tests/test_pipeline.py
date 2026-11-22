@@ -90,6 +90,15 @@ class BuildTests(unittest.TestCase):
         self.assertIn("PTOLEMAIDA5", d["summary"]["units"]["on"])
         self.assertNotIn("AG_DIMITRIOS1", d["summary"]["units"]["active_but_off"])   # retired
 
+    def test_thermal_level_and_windows(self):
+        d = build("20261118")["summary"]
+        self.assertEqual(d["windows"], {"midday": ["11:00", "15:00"], "evening": "21:00"})
+        lv = d["thermal_level_mw"]
+        self.assertLess(lv["midday"]["dam"], 300)
+        self.assertGreater(lv["midday"]["isp1"], 1000)
+        self.assertAlmostEqual(lv["midday"]["isp1"] - lv["midday"]["dam"],
+                               d["thermal_change_mw"]["midday"]["lignite"] + d["thermal_change_mw"]["midday"]["gas"], delta=1)
+
     def test_borders_follow_the_auction_step(self):
         s = build("20261118")["summary"]["borders"]["steps_gwh"]
         self.assertAlmostEqual(s["dam"], 32.934, 2)

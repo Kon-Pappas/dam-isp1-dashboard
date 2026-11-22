@@ -14,4 +14,9 @@
 | K10 | No ISP1 file for 11 Jan 2026 | Day is `partial` | Same test |
 | K11 | The ADMIE API returns the current file only; a file replaced later (15 Jan, 22 Jul) cannot be recovered | `check` days | none |
 | K12 | ELPEDISON_THESS / ELPEDISON_THISVI are assumed to be old names of gas units | Not reported as stopped | Confirm the names |
+| K13 | The page was tested in headless Chromium only (desktop 1280, mobile 360 and 320, English and Greek; days with 23, 24 and 25 hours, a day without ISP1; tabs, modal, language, tooltip, back-to-top), not on real phones or Safari | Layout or font differences are possible | Check on a real iPhone and Android phone |
+| K14 | Tailwind runs in the browser from a CDN (no build) | The page needs internet access to the CDN | Same as the other dashboards |
+| K15 | GitHub Pages can serve a data file from cache for up to about 10 minutes | "Last update" can lag behind a run | The page already asks without cache and adds a minute stamp |
+| K16 | Day files built before 21 Nov 2026 lack `summary.windows` and `summary.thermal_level_mw` | Two sentences of the stage text are missing for those days | Run the workflow once with mode `backfill`, force `true` |
+| K17 | Tabs 2 to 5 are placeholders | Intended | See ROADMAP |
 

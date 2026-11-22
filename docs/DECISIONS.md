@@ -38,3 +38,19 @@ Each decision: date, what, why, what was rejected. Added to, never rewritten.
 
 **D18 (20 Nov 2026) A stored stage is kept only if the file could not be obtained.** After D17 the re-run kept the old (wrong) 15 Jan and 22 Jul days because the rejected Crete file counted as "stage lost". Now: file missing or unreadable this time = keep the stored day; file read but rejected by a check = the new day replaces it.
 
+**D19 (21 Nov 2026) Front-end stack.** A static page, no build step: `index.html`, `i18n.js`, `dashboard.js`. Tailwind play CDN pinned to 3.4.17 and Chart.js pinned to 4.5.1, like the other dashboards. The shell (loading screen, header, controls, tabs, modal, back-to-top button, footer) follows the Flows dashboard. The accent is set in one place (`window.ACCENT`, Rose, light) and used as `acc-*` classes. Rejected: a bundler (the other repos have none).
+
+**D20 (21 Nov 2026) Behaviour copied from the hub.** English by default, choice kept in `kp_lang`; Greek page fully Greek; loading screen with one step per tab and no percentages; one date selector box (a status pill next to "Last update" on desktop, inside the box on mobile); mobile tabs 3 + 2, equal-width tabs on desktop; Methodology modal opens on the section of the current tab, Short/Detailed; "Esc" closes it. New in this repo: the data are reloaded when the page returns to the foreground after `next_update` has passed (checked at most every 5 minutes).
+
+**D21 (21 Nov 2026) Day selector.** All days of `manifest.json`, newest first, default = latest day. "(today)" and "(tomorrow)" are added in the language of the visitor, because the usual reader looks at tomorrow.
+
+**D22 (21 Nov 2026) Status pill.** `Complete data` (green) = quality complete. `Awaiting ISP1` = DAM present, ISP1 not yet, day is today or later. `Data check` = a check failed. Otherwise `Incomplete data`.
+
+**D23 (21 Nov 2026) Colours.** Technologies as in the live dashboard (lignite, gas, hydro, RES, curtailment). Net exports are red when positive and yellow when negative (hub rule: exports red, imports yellow). The accent is never a data colour.
+
+**D24 (21 Nov 2026) Day at a glance, mobile.** Stage 1 and Stage 2 sentences are built from numbers in the day file only. On mobile they are clamped to three lines with "Read more" (the first screen must not be a wall of text). Every sentence is an observation; the congestion wording stays "possible".
+
+**D25 (21 Nov 2026) No analytics and `noindex` until the page is linked.** The hub counter script is not included yet; it is added when the page is linked from the hub. The page has `<meta name="robots" content="noindex, nofollow">`.
+
+**D26 (21 Nov 2026) New fields in the day summary.** `summary.windows` (midday 11:00-15:00, evening 21:00) and `summary.thermal_level_mw` (average DAM and ISP1 thermal level in those windows). The page shows the sentences that need them only when they exist, so days built before this change still display.
+

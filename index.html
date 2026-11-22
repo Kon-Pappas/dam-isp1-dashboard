@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title id="pageTitle">Greek DAM vs ISP1 Analytics</title>
+    <link rel="icon" href="data:,">
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <script>
+        // ONE place for the accent of the page (D15: light Rose). Change only these values. Tailwind: acc-200...acc-500.
+        window.ACCENT = { 200: '#fde0ea', 300: '#fbbfd3', 400: '#f78fb3', 500: '#ee6f9d' };
+        tailwind.config = { theme: { extend: { colors: { acc: window.ACCENT } } } };
+        document.documentElement.style.setProperty('--acc', window.ACCENT[400]);
+    </script>
+    <!-- Chart.js locked at 4.5.1 like the other dashboards; no plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" defer></script>
+    <style>
+        .scroll-thin::-webkit-scrollbar { width: 6px; }
+        .scroll-thin::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        .scroll-thin { scrollbar-width: thin; scrollbar-color: #475569 transparent; }
+        @media (prefers-reduced-motion: reduce) { #loading-overlay *, #loading-overlay *::before, #loading-overlay *::after { transition: none !important; animation: none !important; } }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 max-md:pb-20 md:p-8 flex flex-col justify-between relative">
+
+    <!-- Loading overlay: all steps visible from the start, faint; each step lights up, works, then its bar fills.
+         Step 1 follows the real download. One step per tab. No percentages. -->
+    <div id="loading-overlay" class="fixed inset-0 z-[9999] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center transition-opacity duration-500 px-4">
+        <div class="w-full max-w-sm bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl p-5 flex flex-col gap-4">
+            <div class="flex items-center gap-3 mb-1 border-b border-slate-700/50 pb-3">
+                <div class="w-5 h-5 border-2 border-slate-600 border-t-acc-400 rounded-full animate-spin" id="mainSpinner"></div>
+                <h2 class="text-white text-base font-bold tracking-wide" id="loadTitle">System Initialization</h2>
+            </div>
+            <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-700/50 flex flex-col gap-2">
+                <div class="flex items-center gap-2 mb-1">
+                    <svg class="w-3.5 h-3.5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                    <span class="text-[10px] font-bold text-slate-400 tracking-wider" id="loadGroup1">Data fetching</span>
+                </div>
+                <div class="load-row opacity-50 transition-opacity duration-300" data-step="1">
+                    <div class="flex justify-between items-center mb-1"><span class="text-xs text-slate-300" data-load-label></span><svg class="w-3.5 h-3.5 text-emerald-400 opacity-0 transition-opacity duration-300" data-load-ck fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg></div>
+                    <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden"><div class="bg-blue-500 h-full rounded-full w-0 ease-out" style="transition-property: width, background-color; transition-duration: 300ms;" data-load-bar></div></div>
+                </div>
+            </div>
+            <div class="bg-slate-900/50 rounded-xl p-3 border border-slate-700/50 flex flex-col gap-3 mt-1">
+                <div class="flex items-center gap-2 mb-1">
+                    <svg class="w-3.5 h-3.5 text-acc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    <span class="text-[10px] font-bold text-slate-400 tracking-wider" id="loadGroup2">Building views</span>
+                </div>
+                <div class="load-row opacity-50 transition-opacity duration-300" data-step="2"><div class="flex justify-between items-center mb-1"><span class="text-xs text-slate-300" data-load-label></span><svg class="w-3.5 h-3.5 text-emerald-400 opacity-0 transition-opacity duration-300" data-load-ck fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg></div><div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden"><div class="bg-acc-500 h-full rounded-full w-0 ease-out" style="transition-property: width, background-color; transition-duration: 300ms;" data-load-bar></div></div></div>
+                <div class="load-row opacity-50 transition-opacity duration-300" data-step="3"><div class="flex justify-between items-center mb-1"><span class="text-xs text-slate-300" data-load-label></span><svg class="w-3.5 h-3.5 text-emerald-400 opacity-0 transition-opacity duration-300" data-load-ck fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg></div><div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden"><div class="bg-acc-500 h-full rounded-full w-0 ease-out" style="transition-property: width, background-color; transition-duration: 300ms;" data-load-bar></div></div></div>
+                <div class="load-row opacity-50 transition-opacity duration-300" data-step="4"><div class="flex justify-between items-center mb-1"><span class="text-xs text-slate-300" data-load-label></span><svg class="w-3.5 h-3.5 text-emerald-400 opacity-0 transition-opacity duration-300" data-load-ck fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg></div><div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden"><div class="bg-acc-500 h-full rounded-full w-0 ease-out" style="transition-property: width, background-color; transition-duration: 300ms;" data-load-bar></div></div></div>
+                <div class="load-row opacity-50 transition-opacity duration-300" data-step="5"><div class="flex justify-between items-center mb-1"><span class="text-xs text-slate-300" data-load-label></span><svg class="w-3.5 h-3.5 text-emerald-400 opacity-0 transition-opacity duration-300" data-load-ck fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg></div><div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden"><div class="bg-acc-500 h-full rounded-full w-0 ease-out" style="transition-property: width, background-color; transition-duration: 300ms;" data-load-bar></div></div></div>
+                <div class="load-row opacity-50 transition-opacity duration-300" data-step="6"><div class="flex justify-between items-center mb-1"><span class="text-xs text-slate-300" data-load-label></span><svg class="w-3.5 h-3.5 text-emerald-400 opacity-0 transition-opacity duration-300" data-load-ck fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg></div><div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden"><div class="bg-acc-500 h-full rounded-full w-0 ease-out" style="transition-property: width, background-color; transition-duration: 300ms;" data-load-bar></div></div></div>
+            </div>
+            <div class="opacity-0 transition-all duration-500 transform translate-y-2 flex items-center justify-center p-3 mt-1 rounded-xl border border-emerald-500/30 bg-emerald-500/10 gap-2" id="loadRowFinal">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span class="text-emerald-400 font-bold text-sm tracking-wide" id="loadReady">Dashboard is ready!</span>
+            </div>
+            <p class="hidden text-sm text-red-300 text-center" id="loadError"></p>
+        </div>
+    </div>
+
+    <!-- Back-to-top (mobile only): appears when the tabs have scrolled off the screen -->
+    <button type="button" id="toTopBtn" onclick="scrollToTop()" aria-label="Back to top" title="Back to top" tabindex="-1" aria-hidden="true"
+        class="md:hidden fixed right-4 z-40 w-12 h-12 rounded-full bg-slate-800/95 border border-slate-600 text-acc-300 shadow-lg shadow-black/40 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200 hover:bg-slate-700"
+        style="bottom: calc(1rem + env(safe-area-inset-bottom, 0px));">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" /></svg>
+    </button>
+
+    <!-- Methodology modal -->
+    <div id="methodologyModal" class="fixed inset-0 z-[9998] bg-slate-900/80 backdrop-blur-sm hidden items-center justify-center px-4 transition-opacity duration-300 opacity-0" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl transform transition-transform duration-300 scale-95 flex flex-col max-h-[85vh]" id="modalContent">
+            <div class="flex items-center justify-between gap-3 p-5 border-b border-slate-700 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-acc-500/20 flex items-center justify-center text-acc-400">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-100" id="modalTitle">Methodology, assumptions and limitations</h3>
+                </div>
+                <button type="button" onclick="toggleModal(false)" id="modalXBtn" class="shrink-0 w-9 h-9 flex items-center justify-center rounded-lg border border-slate-600 bg-slate-900/40 text-slate-300 hover:text-white hover:border-slate-400 transition" aria-label="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="flex items-center gap-2 px-6 pt-4 shrink-0">
+                <div class="flex bg-slate-900/60 rounded-lg p-1 w-full">
+                    <button type="button" onclick="setMethodologyMode('short')" id="modalModeShortBtn" class="flex-1 py-1.5 rounded-md text-sm font-semibold transition">Short</button>
+                    <button type="button" onclick="setMethodologyMode('detailed')" id="modalModeDetailedBtn" class="flex-1 py-1.5 rounded-md text-sm font-semibold transition">Detailed</button>
+                </div>
+            </div>
+            <div class="relative p-6 pt-4 text-sm text-slate-300 leading-relaxed overflow-y-auto flex-1 scroll-thin" id="modalBody"></div>
+            <div class="p-4 border-t border-slate-700 flex justify-end shrink-0">
+                <button type="button" onclick="toggleModal(false)" class="px-4 py-2 border border-slate-600 bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold rounded-lg transition" id="modalCloseBtn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto space-y-3 md:space-y-6 w-full">
+
+        <!-- Header: on mobile no line under it and 12 px gaps -->
+        <header class="md:border-b border-slate-700 pb-0 md:pb-4">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 md:gap-4">
+
+                <div class="flex flex-col items-start w-full md:w-auto">
+                    <a href="https://kon-pappas.github.io/" id="hubLink" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-acc-300 focus-visible:text-acc-300 transition-colors mb-2.5 group w-fit max-md:py-2.5 max-md:-my-2.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                        </svg>
+                        <span class="font-medium tracking-wide" id="hubText">Greek Energy Hub</span>
+                    </a>
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-3xl font-bold text-acc-400" id="mainTitle">Greek DAM vs ISP1 Analytics</h1>
+                    </div>
+                    <div class="flex flex-nowrap md:flex-wrap items-center gap-x-3 max-[340px]:gap-x-1.5 md:gap-x-4 gap-y-2 whitespace-nowrap text-[11px] md:text-xs text-slate-400 mt-2" id="updateTimesRow">
+                        <div><span class="hidden md:inline" id="lastUpdateLabel">Last update:</span><span class="md:hidden" id="lastUpdateLabelMobile">Updated:</span> <strong id="lastUpdateVal" class="text-acc-300">–</strong></div>
+                        <span class="md:hidden text-slate-600">·</span>
+                        <div><span class="hidden md:inline" id="nextUpdateLabel">Next update:</span><span class="md:hidden" id="nextUpdateLabelMobile">Next:</span> <strong id="nextUpdateVal" class="text-slate-200">–</strong></div>
+                        <span id="statusPill" class="hidden"></span>
+                    </div>
+                </div>
+
+                <!-- Secondary controls; on mobile one box with dark "wells" -->
+                <div id="ctrlBox" class="flex flex-col items-stretch md:items-end w-full md:w-auto gap-2 md:gap-3 max-md:bg-slate-800/45 max-md:border max-md:border-slate-600/50 max-md:rounded-xl max-md:p-2">
+                    <div class="w-full md:w-auto flex flex-col md:flex-row gap-3">
+                        <div id="pickerBox" class="w-full md:w-auto flex items-center justify-between md:justify-end gap-2 bg-slate-800 p-1 rounded-lg border border-slate-700 shadow-sm max-md:shadow-none max-md:bg-slate-950/70 max-md:border-slate-700/60 h-10 pl-3 pr-1">
+                            <label for="dateSelect" class="max-[340px]:hidden text-xs text-slate-300 font-medium whitespace-nowrap" id="pickerLabel">Day:</label>
+                            <select id="dateSelect" class="bg-slate-900 text-slate-200 text-sm font-semibold rounded p-1 outline-none border border-slate-700 focus:border-acc-400 transition cursor-pointer min-w-0 flex-1 md:flex-none md:w-auto truncate"><option>–</option></select>
+                            <span id="statusPillBox" class="hidden"></span>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-auto flex gap-2 md:gap-3">
+                        <button type="button" id="btnMethodologyWrap" onclick="openMethodology()" class="flex-1 md:flex-none md:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 max-md:bg-slate-950/70 max-md:border-slate-700/60 max-md:shadow-none rounded-lg px-4 text-xs text-slate-300 transition shadow-sm h-12 md:h-10">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-slate-400"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                            <span id="btnMethodology" class="hidden md:inline">Methodology & Assumptions</span><span id="btnMethodologyShort" class="md:hidden">Methodology</span>
+                        </button>
+                        <div class="shrink-0 flex gap-1 bg-slate-800 border border-slate-700 max-md:bg-slate-950/70 max-md:border-slate-700/60 max-md:shadow-none rounded-lg p-1 text-xs font-bold shadow-sm h-10">
+                            <button onclick="setLang('el')" id="btnGr" class="flex items-center justify-center px-4 rounded text-slate-400 hover:text-white transition">GR</button>
+                            <button onclick="setLang('en')" id="btnEn" class="flex items-center justify-center px-4 rounded text-slate-400 hover:text-white transition">EN</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tabs: five = 3 + 2 on mobile (grid of 6 columns); equal width on desktop -->
+        <div>
+            <div class="grid grid-cols-6 md:grid-cols-5 gap-2 md:gap-0 md:border-b md:border-slate-800" role="tablist">
+                <button id="tabBtnGlance" onclick="switchTab('glance')" role="tab" class="tab-btn">Day at a glance</button>
+                <button id="tabBtnReshuffle" onclick="switchTab('reshuffle')" role="tab" class="tab-btn">ADMIE reshuffle</button>
+                <button id="tabBtnThermal" onclick="switchTab('thermal')" role="tab" class="tab-btn">Thermal & constraints</button>
+                <button id="tabBtnBorders" onclick="switchTab('borders')" role="tab" class="tab-btn">Borders & Crete</button>
+                <button id="tabBtnHistory" onclick="switchTab('history')" role="tab" class="tab-btn">History & seasons</button>
+            </div>
+        </div>
+
+        <!-- VIEW 1: DAY AT A GLANCE -->
+        <div id="viewGlance" class="space-y-3 md:space-y-6 block">
+            <div class="flex justify-end -mb-2"><button type="button" hidden id="methLinkGlance" onclick="openMethodology('m-glance')" class="text-xs text-slate-400 hover:text-acc-300 transition md:!inline-block"></button></div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4" id="stageBoxes"></div>
+            <div class="flex flex-wrap gap-2" id="signalPills"></div>
+            <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4" id="kpiGrid"></div>
+            <div class="bg-slate-800/40 p-4 md:p-6 rounded-xl border border-slate-700">
+                <h2 class="text-lg font-semibold text-slate-200" id="heroTitle">Thermal generation</h2>
+                <p class="text-xs text-slate-400 mt-1" id="heroSub">-</p>
+                <div id="heroLegend" class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-300 mt-3"></div>
+                <div class="relative h-[260px] md:h-[360px] mt-3"><canvas id="heroChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- VIEWS 2-5: placeholders, built in later batches -->
+        <div id="viewReshuffle" class="space-y-3 hidden"></div>
+        <div id="viewThermal" class="space-y-3 hidden"></div>
+        <div id="viewBorders" class="space-y-3 hidden"></div>
+        <div id="viewHistory" class="space-y-3 hidden"></div>
+
+        <footer class="mt-12 pt-6 pb-2 text-center border-t border-slate-800">
+            <p class="text-slate-400 text-sm font-medium">Konstantinos Pappas <span class="mx-1 text-slate-600">|</span> Energy Market Analyst</p>
+            <p class="text-slate-500 text-xs mt-1">Business Operations & Risk Management <span class="mx-1 text-slate-600">|</span> Data Insights on Energy Transition & Grid Stability</p>
+        </footer>
+    </div>
+
+    <script src="i18n.js" defer></script>
+    <script src="dashboard.js" defer></script>
+</body>
+</html>
