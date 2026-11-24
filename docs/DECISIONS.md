@@ -54,3 +54,15 @@ Each decision: date, what, why, what was rejected. Added to, never rewritten.
 
 **D26 (21 Nov 2026) New fields in the day summary.** `summary.windows` (midday 11:00-15:00, evening 21:00) and `summary.thermal_level_mw` (average DAM and ISP1 thermal level in those windows). The page shows the sentences that need them only when they exist, so days built before this change still display.
 
+**D27 (22 Nov 2026) Tab "ADMIE reshuffle".** Table DAM vs ISP1 by category in GWh (lignite, gas, big hydro, RES, storage net discharge, pump, net exports, Crete net, residual surplus), hourly charts for big hydro and RES, and a 15-minute chart of DAM price and residual surplus with the possible-congestion windows shaded. A change is never called an intervention in the text: ISP1 includes the intraday auctions (D05, D12).
+
+**D28 (22 Nov 2026) Minimum-output constraints from ISP1.** The sheet `GenericConstraints` is read into `constraints` of the day file: id, type, limit in MW, plant, fuel, and the hours in Greek time. Rows with the same id, hours, type and limit are merged and their sub-units become one plant (ALOUMINIO_1GT, ALOUMINIO_2GT -> ALOUMINIO). The file times are CET and the page shows Greek time (+1 h). `hourly.isp1.constraints_mw` is the sum over plants of the largest active `INTERV_GE` limit, averaged per hour; `summary.constraints_peak_mw` is its maximum. Measured on 18 Nov 2026: five plants, peak 877 MW (Ptolemaida 5 302, Korinthos 182, Heron 175, Aliveri 5 90 between 11:00 and 15:00, Aluminium 127.9 all day).
+
+**D29 (22 Nov 2026) Tab "Thermal & constraints".** The thermal chart with the constraint sum as a grey step line, the ISP1 schedule per unit as a heat map (the DAM has no per-unit data), and the constraints grouped by plant. The text says the two coincide and that the files do not say that one causes the other.
+
+**D30 (22 Nov 2026) Refresh without re-download.** The data files are requested with `cache: 'no-cache'` (the server is asked if the file changed) and without a time parameter, as in the other dashboards (BESS D53). This replaces the minute stamp of batch 5. K15 is closed by this decision.
+
+**D31 (22 Nov 2026) Hub checklist and mobile measurement.** The hub-wide list (H and C) is copied to the end of `docs/KNOWN_ISSUES.md` (K07 closed by this decision). First content on mobile, measured on 21 Nov 2026 in headless Chromium: 391 px at 360 px width (English) and 427 px at 320 px width (Greek).
+
+**D32 (22 Nov 2026) One tooltip for all charts.** The hour or time in the accent colour, values right-aligned, a dashed rule before totals, zeros as "–". K16 (day files without `windows`) was closed on 22 Nov 2026 by the full rebuild.
+

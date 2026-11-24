@@ -165,6 +165,26 @@ def build_day(day, dam, isp, crete, registry, published=None):
         }
     h_cr = None if cr is None else {k: r(cr[k]) for k in ("load", "res", "thermal", "flow")}
 
+    # ---------- ADMIE minimum-output constraints (ISP1 sheet GenericConstraints, CET wall clock) ----------
+    cons_out, cons_mw = None, None
+    if isp is not None and isp.get("constraints") is not None:
+        walls = cet_wall(utcs)
+        one_h = dt.timedelta(hours=1)
+        def gr(x):                                  # CET wall clock -> Greek clock label
+            return (x + one_h).strftime("%H:%M")
+        cons_out = [{"id": c["id"], "type": c["type"], "limit_mw": round(c["limit"], 1), "plants": c["plants"],
+                     "fuel": (registry.get(c["plants"][0]) or {}).get("fuel"),
+                     "from": gr(c["start"]), "to": gr(c["end"])} for c in isp["constraints"]]
+        cons_mw = np.zeros(n)
+        for i, w in enumerate(walls):
+            by_plant = {}
+            for c in isp["constraints"]:
+                if c["type"] == "INTERV_GE" and c["start"] <= w < c["end"]:
+                    for pl in c["plants"]:
+                        by_plant[pl] = max(by_plant.get(pl, 0.0), c["limit"])
+            cons_mw[i] = sum(by_plant.values())
+        h_isp["constraints_mw"] = r(hmean(cons_mw))
+
     # ---------- 15-minute block ----------
     q = {"mcp": r(dam["mcp"], 2), "dam_imports": r(dam_imports)}
     if isp is not None:
@@ -244,6 +264,8 @@ def build_day(day, dam, isp, crete, registry, published=None):
         on = {u for u, a in isp["units"].items() if float(a.max()) > C.ISP_ON_MW}
         summary["units"] = {"on": sorted(on), "active_but_off": sorted(u for u in reg_active if u in isp["units"] and u not in on)}
 
+    if cons_mw is not None:
+        summary["constraints_peak_mw"] = rnd(cons_mw.max(), 0)
     stages = {"dam": True, "isp1": isp is not None, "crete": cr is not None}
     ok = all(c["ok"] for c in checks)
     quality = "complete" if (stages["isp1"] and stages["crete"] and ok) else ("check" if not ok else "partial")
@@ -254,5 +276,5 @@ def build_day(day, dam, isp, crete, registry, published=None):
         "isp1_info": None if isp is None else {"isp": isp["isp"], "calc_stamp": isp["calc_stamp"]},
         "dam_info": {"ver": dam["ver"], "classes": dam["classes"]},
         "hourly": {"label": labels, "dam": h_dam, "isp1": h_isp, "crete": h_cr},
-        "q": q, "summary": summary, "signals": signals, "checks": checks,
+        "constraints": cons_out, "q": q, "summary": summary, "signals": signals, "checks": checks,
     }

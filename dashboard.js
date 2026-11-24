@@ -14,7 +14,7 @@ const LD = REDUCE ? { min: 120, pause: 200, fill: 200, ready: 200 } : { min: 650
 let lang = 'en';
 try { lang = localStorage.getItem('kp_lang') === 'el' ? 'el' : 'en'; } catch (e) { /* private mode */ }
 const st = { open: {}, manifest: null, meta: null, months: {}, date: null, tab: 'glance', day: null, lastRefresh: 0, ready: false };
-let heroChart = null, modalMode = 'short', modalReturnFocus = null, modalOpen = false;
+let modalMode = 'short', modalReturnFocus = null, modalOpen = false;
 
 const T = () => I18N[lang];
 const $ = (id) => document.getElementById(id);
@@ -41,7 +41,7 @@ function timeOf(s) { const m = /(\d{2}:\d{2})/.exec(s || ''); return m ? m[1] : 
 
 // ---------- data ----------
 async function getJSON(url) {
-    const r = await fetch(url + (url.includes('?') ? '&' : '?') + 't=' + Math.floor(Date.now() / 60000), { cache: 'no-cache' });
+    const r = await fetch(url, { cache: 'no-cache' });          // asks the server if the file changed (ETag), no re-download otherwise
     if (!r.ok) throw new Error(url + ' ' + r.status);
     return r.json();
 }
@@ -140,41 +140,53 @@ function applyStatic() {
     paintModeButtons();
 }
 
-// ---------- chart tooltip ----------
-function tipEl() {
-    let el = $('chartTip');
+// ---------- charts ----------
+const charts = {};
+function killChart(id) { if (charts[id]) { try { charts[id].destroy(); } catch (e) { /* already gone */ } delete charts[id]; } }
+function mkChart(id, cfg) { killChart(id); const el = $(id); if (!el || typeof Chart === 'undefined') return null; charts[id] = new Chart(el, cfg); return charts[id]; }
+const GRID = 'rgba(51,65,85,.4)';
+function xAxis(title, labelFn) {
+    return { grid: { color: GRID }, ticks: Object.assign({ color: '#94a3b8', maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }, labelFn ? { callback: labelFn } : {}), title: { display: !!title, text: title, color: '#94a3b8', font: { size: 11 } } };
+}
+function yAxis(title, extra) {
+    return Object.assign({ beginAtZero: true, grid: { color: GRID }, ticks: { color: '#94a3b8', callback: (v) => fmt(v, 0) }, title: { display: !!title, text: title, color: '#94a3b8', font: { size: 11 } } }, extra || {});
+}
+function baseOpts(model, scales, plugins) {
+    return { responsive: true, maintainAspectRatio: false, animation: REDUCE ? false : { duration: 400 }, interaction: { mode: 'index', intersect: false },
+        plugins: Object.assign({ legend: { display: false }, tooltip: { enabled: false, external: externalFor(model) } }, plugins || {}), scales };
+}
+const lineDs = (label, data, color, dashed, extra) => Object.assign({ type: 'line', label, data, borderColor: color, backgroundColor: color, borderWidth: dashed ? 2 : 2.6, borderDash: dashed ? [6, 4] : [], pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: false }, extra || {});
+const tv = (x) => (x == null || Math.abs(x) < 0.5 ? '–' : fmt(x, 0));
+
+// one tooltip for every chart: hour (or time) in the accent colour, values right-aligned, dashed rule before totals
+function tipEl(canvas) {
+    const id = 'tip_' + canvas.id; let el = $(id);
     if (!el) {
-        el = document.createElement('div'); el.id = 'chartTip';
+        el = document.createElement('div'); el.id = id;
         el.className = 'pointer-events-none absolute z-20 hidden rounded-lg border border-slate-600 bg-slate-900/95 px-3 py-2 text-xs shadow-xl shadow-black/40';
-        el.style.minWidth = '210px';
-        $('heroChart').parentElement.appendChild(el);
+        el.style.minWidth = '190px'; canvas.parentElement.appendChild(el);
     }
     return el;
 }
-const tv = (x) => (x == null || Math.abs(x) < 0.5 ? '–' : fmt(x, 0));
-function externalTip(ctx) {
-    const el = tipEl(), tip = ctx.tooltip, day = st.day;
-    if (!day || tip.opacity === 0) { el.classList.add('hidden'); return; }
-    const i = tip.dataPoints[0].dataIndex, h = day.hourly, t = T().hero, hasIsp = !!h.isp1;
-    const L = (a) => (a ? a[i] : null);
-    const rows = [
-        { n: t.lignite, c: COL.lignite, d: L(h.dam.lignite), s: hasIsp ? L(h.isp1.lignite) : null },
-        { n: t.gas, c: COL.gas, d: L(h.dam.gas), s: hasIsp ? L(h.isp1.gas) : null }
-    ];
-    const tot = { n: t.total, c: '#e2e8f0', d: (rows[0].d || 0) + (rows[1].d || 0), s: hasIsp ? (rows[0].s || 0) + (rows[1].s || 0) : null };
-    const cell = (v, cls = '') => `<div class="text-right tabular-nums ${cls}">${tv(v)}</div>`;
-    const row = (r, bold) => `<div class="flex items-center gap-1.5 ${bold ? 'font-semibold text-slate-100' : 'text-slate-300'}"><span class="inline-block w-2 h-2 rounded-full" style="background:${r.c}"></span>${r.n}</div>${cell(r.d)}${cell(r.s)}${hasIsp ? `<div class="text-right tabular-nums ${bold ? 'text-acc-300' : 'text-slate-400'}">${r.s == null || r.d == null || Math.abs(r.s - r.d) < 0.5 ? '–' : fmtS(r.s - r.d, 0)}</div>` : ''}`;
-    el.innerHTML = `<div class="text-acc-300 font-semibold mb-1.5">${hourRange(h.label[i])}</div>
-        <div class="grid items-center gap-x-3 gap-y-1" style="grid-template-columns:${hasIsp ? 'auto 1fr 1fr 1fr' : 'auto 1fr'}">
-        <div></div><div class="text-right text-slate-400">${t.dam}</div>${hasIsp ? `<div class="text-right text-slate-400">${t.isp}</div><div class="text-right text-slate-400">${t.diff}</div>` : ''}
-        ${hasIsp ? row(rows[0]) + row(rows[1]) + `<div class="col-span-4 border-t border-dashed border-slate-600 my-0.5"></div>` + row(tot, true)
-                 : `${row({ ...rows[0], s: null })}${row({ ...rows[1], s: null })}`}</div>`;
-    if (!hasIsp) el.querySelectorAll('div.grid > div').forEach(() => {});
-    el.classList.remove('hidden');
-    const wrap = el.parentElement.getBoundingClientRect(), w = el.offsetWidth;
-    let x = tip.caretX + 14; if (x + w > wrap.width - 4) x = tip.caretX - w - 14; if (x < 4) x = 4;
-    el.style.left = x + 'px'; el.style.top = '8px';
+function externalFor(getModel) {
+    return (ctx) => {
+        const tip = ctx.tooltip, el = tipEl(ctx.chart.canvas);
+        if (!st.day || tip.opacity === 0) { el.classList.add('hidden'); return; }
+        const m = getModel(tip.dataPoints[0].dataIndex), cols = m.head.length;
+        const cell = (v, c) => `<div class="text-right tabular-nums ${c || ''}">${v}</div>`;
+        let html = `<div class="text-acc-300 font-semibold mb-1.5">${m.title}</div><div class="grid items-center gap-x-3 gap-y-1" style="grid-template-columns:auto ${'1fr '.repeat(cols)}"><div></div>${m.head.map((h) => cell(h, 'text-slate-400')).join('')}`;
+        m.rows.forEach((r) => {
+            if (r.sep) { html += '<div class="border-t border-dashed border-slate-600 my-0.5" style="grid-column:1/-1"></div>'; return; }
+            html += `<div class="flex items-center gap-1.5 ${r.bold ? 'font-semibold text-slate-100' : 'text-slate-300'}"><span class="inline-block w-2 h-2 rounded-full" style="background:${r.c}"></span>${r.n}</div>` +
+                r.v.map((v, i) => cell(v, r.bold && i === r.v.length - 1 ? 'text-acc-300' : '')).join('');
+        });
+        el.innerHTML = html + '</div>'; el.classList.remove('hidden');
+        const wrap = el.parentElement.getBoundingClientRect(), w = el.offsetWidth;
+        let x = tip.caretX + 14; if (x + w > wrap.width - 4) x = tip.caretX - w - 14; if (x < 4) x = 4;
+        el.style.left = x + 'px'; el.style.top = '8px';
+    };
 }
+const diffTxt = (d, s) => (d == null || s == null || Math.abs(s - d) < 0.5 ? '–' : fmtS(s - d, 0));
 
 // ---------- tab 1: day at a glance ----------
 function sectionBox(id, title, sub, bodyHtml) {
@@ -266,40 +278,166 @@ function renderKpis() {
         kpiCard(t.exports, C.border_net.dam, C.border_net.isp1, 1, flow) +
         kpiCard(t.surplus, null, day.summary.surplus ? day.summary.surplus.gwh : null, 1, COL.surplus, true);
 }
-function renderHero() {
-    const t = T(), day = st.day;
-    $('heroTitle').textContent = t.hero.title; $('heroSub').textContent = t.hero.sub;
-    if (heroChart) { heroChart.destroy(); heroChart = null; }
-    if (!day || typeof Chart === 'undefined') { $('heroLegend').innerHTML = ''; return; }
-    const h = day.hourly, hasIsp = !!h.isp1;
-    $('heroLegend').innerHTML =
-        `<span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:${COL.lignite}"></span>${t.hero.lignite}</span>
-         <span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:${COL.gas}"></span>${t.hero.gas}</span>
-         <span class="text-slate-400">${hasIsp ? t.solidIsp + ' · ' + t.dashedDam : t.onlyDam}</span>`;
-    const line = (label, data, color, dashed) => ({ label, data, borderColor: color, backgroundColor: color, borderWidth: dashed ? 2 : 2.6, borderDash: dashed ? [6, 4] : [], pointRadius: 0, pointHoverRadius: 4, tension: 0.25, spanGaps: false });
-    const ds = [];
-    ds.push(line(t.hero.lignite + ' ' + t.hero.dam, h.dam.lignite, COL.lignite, hasIsp));
-    ds.push(line(t.hero.gas + ' ' + t.hero.dam, h.dam.gas, COL.gas, hasIsp));
-    if (hasIsp) { ds.push(line(t.hero.lignite + ' ' + t.hero.isp, h.isp1.lignite, COL.lignite, false)); ds.push(line(t.hero.gas + ' ' + t.hero.isp, h.isp1.gas, COL.gas, false)); }
-    heroChart = new Chart($('heroChart'), {
-        type: 'line', data: { labels: h.label, datasets: ds },
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: REDUCE ? false : { duration: 400 },
-            interaction: { mode: 'index', intersect: false },
-            plugins: { legend: { display: false }, tooltip: { enabled: false, external: externalTip } },
-            scales: {
-                x: { grid: { color: 'rgba(51,65,85,.4)' }, ticks: { color: '#94a3b8', maxTicksLimit: 8, autoSkip: true, maxRotation: 0 }, title: { display: true, text: t.axisHour, color: '#94a3b8', font: { size: 11 } } },
-                y: { beginAtZero: true, grid: { color: 'rgba(51,65,85,.4)' }, ticks: { color: '#94a3b8', callback: (v) => fmt(v, 0) }, title: { display: true, text: 'MW', color: '#94a3b8', font: { size: 11 } } }
-            }
-        }
-    });
+function thermalLegendHtml(withCons, hasIsp) {
+    const t = T(), dot = (c, tx) => `<span class="inline-flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full" style="background:${c}"></span>${tx}</span>`;
+    return dot(COL.lignite, t.hero.lignite) + dot(COL.gas, t.hero.gas) + (withCons ? dot('#94a3b8', t.t3.cons) : '') +
+        `<span class="text-slate-400">${hasIsp ? t.solidIsp + ' · ' + t.dashedDam : t.onlyDam}</span>`;
 }
-function renderGlance() { renderStages(); renderSignals(); renderKpis(); renderHero(); }
+function thermalModel(withCons) {
+    return (i) => {
+        const h = st.day.hourly, t = T().hero, hasIsp = !!h.isp1, L = (a) => (a ? a[i] : null);
+        const o = (key) => ({ dam: L(h.dam[key]), isp: hasIsp ? L(h.isp1[key]) : null });
+        const row = (n, c, v, bold) => ({ n, c, bold, v: hasIsp ? [tv(v.dam), tv(v.isp), diffTxt(v.dam, v.isp)] : [tv(v.dam)] });
+        const lg = o('lignite'), gs = o('gas');
+        const rows = [row(t.lignite, COL.lignite, lg), row(t.gas, COL.gas, gs), { sep: true }, row(t.total, '#e2e8f0', { dam: (lg.dam || 0) + (gs.dam || 0), isp: hasIsp ? (lg.isp || 0) + (gs.isp || 0) : null }, true)];
+        if (withCons && hasIsp && h.isp1.constraints_mw) rows.push({ sep: true }, { n: T().t3.cons, c: '#94a3b8', v: ['–', tv(h.isp1.constraints_mw[i]), '–'] });
+        return { title: hourRange(h.label[i]), head: hasIsp ? [t.dam, t.isp, t.diff] : [t.dam], rows };
+    };
+}
+function renderThermal(canvasId, legendId, withCons) {
+    const t = T(), day = st.day; killChart(canvasId);
+    if (!day) { $(legendId).innerHTML = ''; return; }
+    const h = day.hourly, hasIsp = !!h.isp1, hasCons = withCons && hasIsp && !!h.isp1.constraints_mw;
+    $(legendId).innerHTML = thermalLegendHtml(hasCons, hasIsp);
+    const ds = [lineDs(t.hero.lignite + ' ' + t.hero.dam, h.dam.lignite, COL.lignite, hasIsp), lineDs(t.hero.gas + ' ' + t.hero.dam, h.dam.gas, COL.gas, hasIsp)];
+    if (hasIsp) { ds.push(lineDs(t.hero.lignite + ' ' + t.hero.isp, h.isp1.lignite, COL.lignite, false)); ds.push(lineDs(t.hero.gas + ' ' + t.hero.isp, h.isp1.gas, COL.gas, false)); }
+    if (hasCons) ds.push(lineDs(t.t3.cons, h.isp1.constraints_mw, '#94a3b8', true, { stepped: true, borderWidth: 1.5, borderDash: [2, 3], tension: 0 }));
+    mkChart(canvasId, { type: 'line', data: { labels: h.label, datasets: ds }, options: baseOpts(thermalModel(hasCons), { x: xAxis(t.axisHour), y: yAxis('MW') }) });
+}
+function renderGlance() { renderStages(); renderSignals(); renderKpis(); $('heroTitle').textContent = T().hero.title; $('heroSub').textContent = T().hero.sub; renderThermal('heroChart', 'heroLegend', false); }
 function renderPlaceholder(tab) {
     const t = T().soon;
     $(VIEW[tab]).innerHTML = `<div class="bg-slate-800/40 border border-slate-700 rounded-xl p-6 text-center"><h2 class="text-lg font-semibold text-slate-200">${t.title}</h2><p class="mt-2 text-sm text-slate-400">${t.text}</p></div>`;
 }
-function renderTab(tab) { if (tab === 'glance') renderGlance(); else renderPlaceholder(tab); }
+const card = 'bg-slate-800/40 border border-slate-700 rounded-xl p-4 md:p-5';
+const methBtn = (id) => `<div class="flex justify-end -mb-2"><button type="button" onclick="openMethodology('${id}')" class="hidden md:inline-block text-xs text-slate-400 hover:text-acc-300 transition">${T().methodLink}</button></div>`;
+const plantName = (k) => T().units[k] || k.replace(/_/g, ' ');
+
+// ----- tab 2: ADMIE reshuffle -----
+function pairModel(key, color, name) {
+    return (i) => {
+        const h = st.day.hourly, t = T().hero, hasIsp = !!h.isp1, d = h.dam[key][i], s = hasIsp ? h.isp1[key][i] : null;
+        return { title: hourRange(h.label[i]), head: hasIsp ? [t.dam, t.isp, t.diff] : [t.dam], rows: [{ n: name, c: color, v: hasIsp ? [tv(d), tv(s), diffTxt(d, s)] : [tv(d)] }] };
+    };
+}
+function renderPair(id, key, color, name) {
+    const h = st.day.hourly, t = T(), hasIsp = !!h.isp1;
+    const ds = [lineDs(t.hero.dam, h.dam[key], color, hasIsp)];
+    if (hasIsp) ds.push(lineDs(t.hero.isp, h.isp1[key], color, false));
+    mkChart(id, { type: 'line', data: { labels: h.label, datasets: ds }, options: baseOpts(pairModel(key, color, name), { x: xAxis(t.axisHour), y: yAxis('MW') }) });
+}
+function congBands(day) {
+    const sig = day.signals.find((x) => x.id === 'possible_congestion') || day.signals.find((x) => x.id === 'zero_price_imports');
+    if (!sig) return [];
+    return sig.windows.map((w) => { const a = day.clock.indexOf(w.from); let e = day.clock.indexOf(w.to, a + 1); if (e < 0) e = day.clock.length; return [a, e]; }).filter((x) => x[0] >= 0);
+}
+const bandPlugin = {
+    id: 'bands',
+    afterDatasetsDraw(chart) {
+        const list = (chart.options.plugins.bands && chart.options.plugins.bands.list) || [];
+        if (!list.length) return;
+        const { ctx, chartArea, scales } = chart, x = scales.x, half = (x.getPixelForValue(1) - x.getPixelForValue(0)) / 2;
+        ctx.save(); ctx.fillStyle = 'rgba(247,143,179,0.18)';
+        list.forEach(([a, e]) => { const l = x.getPixelForValue(a) - half, r = x.getPixelForValue(e - 1) + half; ctx.fillRect(l, chartArea.top, r - l, chartArea.bottom - chartArea.top); });
+        ctx.restore();
+    }
+};
+function surplusModel(i) {
+    const d = st.day, q = d.q, t = T().t2, col = '#e2e8f0';
+    const rows = [{ n: t.price, c: col, v: [fmtPrice(q.mcp[i])] }];
+    if (q.surplus) rows.push({ n: t.surplus, c: COL.surplus, v: [tv(q.surplus[i])] });
+    if (q.dam_imports) rows.push({ n: t.imports, c: COL.imp, v: [tv(q.dam_imports[i])] });
+    if (q.isp_imports) rows.push({ n: t.ispImports, c: COL.imp, v: [tv(q.isp_imports[i])] });
+    return { title: d.clock[i], head: [''], rows };
+}
+function renderSurplusChart() {
+    const day = st.day, t = T(), q = day.q, hourOf = function (v) { return String(this.getLabelForValue(v)).slice(0, 2); };
+    const ds = [];
+    if (q.surplus) ds.push({ type: 'bar', label: t.t2.surplus, data: q.surplus, backgroundColor: COL.surplus, borderWidth: 0, barPercentage: 1, categoryPercentage: 1, yAxisID: 'y', order: 2 });
+    ds.push(lineDs(t.t2.price, q.mcp, '#e2e8f0', false, { yAxisID: 'y2', order: 1, tension: 0, borderWidth: 2 }));
+    const opts = baseOpts(surplusModel, { x: xAxis(t.axisHour, hourOf), y: yAxis('MW'), y2: yAxis('€/MWh', { position: 'right', grid: { drawOnChartArea: false } }) }, { bands: { list: congBands(day) } });
+    mkChart('surChart', { type: 'bar', data: { labels: day.clock, datasets: ds }, options: opts, plugins: [bandPlugin] });
+}
+function tableRows(day) {
+    const C = day.summary.categories, t = T().t2.rows, S = day.summary.surplus;
+    return [['lignite', C.lignite], ['gas', C.gas], ['hydro', C.hydro], ['res', C.res], ['storage', C.storage_net], ['pump', C.pump], ['exports', C.border_net], ['crete', C.crete_net]]
+        .map(([k, c]) => ({ n: t[k], dam: c.dam, isp: c.isp1 })).concat([{ n: t.surplus, dam: null, isp: S ? S.gwh : null, only: true }]);
+}
+function renderReshuffle() {
+    ['hydroChart', 'resChart', 'surChart'].forEach(killChart);
+    const day = st.day, t = T(), t2 = t.t2, el = $(VIEW.reshuffle);
+    if (!day) { el.innerHTML = `<p class="text-sm text-slate-400">${t.failed}</p>`; return; }
+    const grid = 'grid grid-cols-[minmax(0,1fr)_3.6rem_3.6rem_4.6rem] md:grid-cols-[minmax(0,1fr)_5rem_5rem_6rem] gap-x-2 items-baseline';
+    const rows = tableRows(day).map((r) => {
+        const dl = r.only || r.dam == null || r.isp == null ? null : r.isp - r.dam, big = dl != null && Math.abs(dl) >= 1.5;
+        return `<div class="${grid} py-2 border-t border-slate-700/60 text-sm"><div class="text-slate-200">${r.n}</div>
+            <div class="text-right tabular-nums text-slate-400">${r.dam == null ? '–' : fmt(r.dam, 1)}</div>
+            <div class="text-right tabular-nums text-slate-100 font-semibold">${r.isp == null ? '–' : fmt(r.isp, 1)}</div>
+            <div class="text-right tabular-nums ${big ? 'text-acc-300 font-semibold' : 'text-slate-400'}">${r.only ? t2.onlyIsp : dl == null ? '–' : fmtS(dl, 1)}</div></div>`;
+    }).join('');
+    el.innerHTML = methBtn('m-reshuffle') + `
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+        <div class="${card}"><h2 class="text-base font-semibold text-slate-200">${t2.tableTitle}</h2><p class="text-xs text-slate-400 mt-1">${t2.tableSub}</p>
+          <div class="mt-3"><div class="${grid} pb-1 text-[11px] text-slate-400"><div>${t2.cols.cat}</div><div class="text-right">${t2.cols.dam}</div><div class="text-right">${t2.cols.isp}</div><div class="text-right">${t2.cols.chg}</div></div>${rows}</div></div>
+        <div class="grid grid-cols-1 gap-3 md:gap-4">
+          <div class="${card}"><h2 class="text-base font-semibold text-slate-200">${t2.hydroTitle}</h2><p class="text-xs text-slate-400 mt-1">${t2.pairSub}</p><div class="relative h-[170px] md:h-[150px] mt-2"><canvas id="hydroChart"></canvas></div></div>
+          <div class="${card}"><h2 class="text-base font-semibold text-slate-200">${t2.resTitle}</h2><p class="text-xs text-slate-400 mt-1">${t2.pairSub}</p><div class="relative h-[170px] md:h-[150px] mt-2"><canvas id="resChart"></canvas></div></div>
+        </div></div>
+      <div class="${card}"><h2 class="text-base font-semibold text-slate-200">${t2.surTitle}</h2><p class="text-xs text-slate-400 mt-1">${t2.surSub}</p><div class="relative h-[240px] md:h-[300px] mt-3"><canvas id="surChart"></canvas></div></div>`;
+    renderPair('hydroChart', 'hydro', COL.hydro, t.kpi.hydro);
+    renderPair('resChart', 'res', COL.res, t.kpi.res);
+    renderSurplusChart();
+}
+
+// ----- tab 3: thermal & constraints -----
+function heatHtml(day) {
+    const t3 = T().t3, h = day.hourly.isp1;
+    if (!h) return `<p class="text-sm text-slate-400">${t3.noIsp}</p>`;
+    const names = Object.keys(h.units).sort((a, b) => ((h.unit_fuel[a] === 'lignite' ? 0 : 1) - (h.unit_fuel[b] === 'lignite' ? 0 : 1)) || a.localeCompare(b));
+    if (!names.length) return `<p class="text-sm text-slate-400">${t3.heatNone}</p>`;
+    const labels = day.hourly.label, axis = labels.map((l, i) => `<div class="flex-1 min-w-0 text-[10px] text-slate-500 text-center">${i % 3 === 0 ? l : ''}</div>`).join('');
+    const rows = names.map((u) => {
+        const v = h.units[u], mx = Math.max(...v, 1), col = h.unit_fuel[u] === 'lignite' ? COL.lignite : COL.gas;
+        const cells = v.map((x, i) => `<div class="flex-1 min-w-0 h-5 rounded-[2px]" style="background:${col};opacity:${(0.07 + 0.93 * x / mx).toFixed(2)}" title="${plantName(u)} · ${hourRange(labels[i])}: ${fmt(x, 0)} MW"></div>`).join('');
+        return `<div class="flex items-center gap-px mb-px"><div class="w-24 md:w-36 shrink-0 pr-2 text-[11px] md:text-xs text-slate-300 truncate">${plantName(u)}</div>${cells}</div>`;
+    }).join('');
+    return `${rows}<div class="flex items-center gap-px mt-1"><div class="w-24 md:w-36 shrink-0"></div>${axis}</div>`;
+}
+function consHtml(day) {
+    const t3 = T().t3, cs = day.constraints;
+    if (cs === undefined) return `<p class="text-sm text-slate-400">${t3.noData}</p>`;
+    if (cs === null || !day.stages.isp1) return `<p class="text-sm text-slate-400">${t3.noIsp}</p>`;
+    if (!cs.length) return `<p class="text-sm text-slate-400">${t3.none}</p>`;
+    const by = {};
+    cs.forEach((c) => { const k = c.plants[0]; (by[k] = by[k] || { k, fuel: c.fuel, max: 0, wins: [] }); by[k].max = Math.max(by[k].max, c.limit_mw); by[k].wins.push(c); });
+    const list = Object.values(by).sort((a, b) => b.max - a.max), mx = list[0].max;
+    return list.map((p) => {
+        const w = p.wins[0], hrs = w.from === w.to ? t3.allDay : `${w.from}–${w.to}`, more = p.wins.length > 1 ? ' · ' + fill(t3.moreWin, { n: p.wins.length - 1 }) : '';
+        return `<div class="py-2 border-t border-slate-700/60 first:border-t-0"><div class="flex items-baseline justify-between gap-3"><span class="text-sm text-slate-200">${plantName(p.k)}</span><span class="text-sm font-semibold tabular-nums text-slate-100">${fmt(p.max, 0)} MW</span></div>
+            <div class="mt-1 h-2 rounded bg-slate-900/70 overflow-hidden"><div class="h-full rounded" style="width:${(p.max / mx * 100).toFixed(1)}%;background:${p.fuel === 'lignite' ? COL.lignite : COL.gas}"></div></div>
+            <div class="mt-1 text-[11px] text-slate-400">${hrs}${more}</div></div>`;
+    }).join('');
+}
+function renderThermalTab() {
+    killChart('thermChart');
+    const day = st.day, t = T(), t3 = t.t3, el = $(VIEW.thermal);
+    if (!day) { el.innerHTML = `<p class="text-sm text-slate-400">${t.failed}</p>`; return; }
+    const s = day.summary, ch = s.thermal_change_mw, cs = day.constraints;
+    let lead = '';
+    if (cs && cs.length && ch && s.windows) {
+        lead = `<div class="${card}"><p class="text-sm leading-relaxed text-slate-300">${fill(t3.lead, { n: b(new Set(cs.map((c) => c.plants[0])).size), peak: b(fmt(s.constraints_peak_mw, 0)), a: s.windows.midday[0], b: s.windows.midday[1], add: b(fmtS((ch.midday.lignite || 0) + (ch.midday.gas || 0), 0)) })}</p></div>`;
+    }
+    el.innerHTML = methBtn('m-thermal') + lead + `
+      <div class="${card}"><h2 class="text-base font-semibold text-slate-200">${t3.thermTitle}</h2><p class="text-xs text-slate-400 mt-1">${t3.thermSub}</p><div id="thermLegend" class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-300 mt-3"></div><div class="relative h-[260px] md:h-[340px] mt-3"><canvas id="thermChart"></canvas></div></div>
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-4">
+        <div class="${card} md:col-span-3"><h2 class="text-base font-semibold text-slate-200">${t3.heatTitle}</h2><p class="text-xs text-slate-400 mt-1">${t3.heatSub}</p><div class="mt-3">${heatHtml(day)}</div><p class="text-[11px] text-slate-500 mt-3">${t3.retired}</p></div>
+        <div class="${card} md:col-span-2"><h2 class="text-base font-semibold text-slate-200">${t3.consTitle}</h2><p class="text-xs text-slate-400 mt-1">${t3.consSub}</p><div class="mt-3">${consHtml(day)}</div></div>
+      </div>`;
+    renderThermal('thermChart', 'thermLegend', true);
+}
+function renderTab(tab) {
+    if (tab === 'glance') renderGlance(); else if (tab === 'reshuffle') renderReshuffle(); else if (tab === 'thermal') renderThermalTab(); else renderPlaceholder(tab);
+}
 function renderAll() { TABS.forEach(renderTab); paintPill(); }
 
 // ---------- tabs, scroll ----------
@@ -308,7 +446,7 @@ function switchTab(tab) {
     TABS.forEach((k) => $(VIEW[k]).classList.toggle('hidden', k !== tab));
     $(VIEW[tab]).classList.toggle('block', true);
     paintTabs();
-    if (tab === 'glance' && heroChart) heroChart.resize();
+    Object.values(charts).forEach((c) => { try { c.resize(); } catch (e) { /* hidden */ } });
 }
 function scrollToTop() { window.scrollTo({ top: 0, behavior: REDUCE ? 'auto' : 'smooth' }); }
 function updateToTop() {

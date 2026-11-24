@@ -19,7 +19,7 @@ Status: **work in progress, not linked from the hub** (the page has `noindex`). 
 | `.github/workflows/update-data.yml` | Manual-trigger workflow (cron-job.org calls it) |
 | `docs/` | `DECISIONS.md`, `KNOWN_ISSUES.md`, `ROADMAP.md`, `DATA_CONTRACT.md` |
 
-The page is `index.html` + `i18n.js` + `dashboard.js` (static, no build). All numbers are computed in Python; the page only shows them. Tabs 2 to 5 are placeholders until the next releases.
+The page is `index.html` + `i18n.js` + `dashboard.js` (static, no build). All numbers are computed in Python; the page only shows them. Tabs 1 to 3 (Day at a glance, ADMIE reshuffle, Thermal & constraints) are built; the other two are placeholders until the next releases.
 
 ## Commands (run from the repo root)
 

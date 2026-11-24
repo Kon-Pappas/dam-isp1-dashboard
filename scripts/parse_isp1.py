@@ -16,6 +16,46 @@ def _num(row, n):
     return np.nan_to_num(pd.to_numeric(row.iloc[1:n + 1], errors="coerce").to_numpy(float))
 
 
+def plant_of(unit, registry):
+    """Name of the plant a constraint unit belongs to (ALOUMINIO_1GT -> ALOUMINIO)."""
+    if unit in registry:
+        return unit
+    for name in sorted(registry, key=len, reverse=True):
+        if unit.startswith(name):
+            return name
+    return re.sub(r"_(\d?GT(_ST)?|G)$", "", unit)
+
+
+def read_constraints(path, registry):
+    """Rows of the sheet 'GenericConstraints', merged by (id, start, end, type, limit). Times stay CET wall clock."""
+    xl = pd.ExcelFile(path, engine="openpyxl")
+    names = [n for n in xl.sheet_names if "GenericConstraints" in n]
+    if not names:
+        return None
+    raw = pd.read_excel(xl, sheet_name=names[0], header=None)
+    if len(raw) < 2:
+        return []
+    cols = [str(c) for c in raw.iloc[1].tolist()]
+    need = ["Id", "Start Time", "End Time", "Constraint Type", "Limit", "Unit"]
+    if any(c not in cols for c in need):
+        return None
+    df = raw.iloc[2:].copy()
+    df.columns = cols
+    df = df[df["Id"].notna()]
+    out, seen = [], {}
+    for _, r in df.iterrows():
+        key = (str(r["Id"]), pd.Timestamp(r["Start Time"]), pd.Timestamp(r["End Time"]), str(r["Constraint Type"]), float(r["Limit"]))
+        plant = plant_of(str(r["Unit"]), registry)
+        if key in seen:
+            if plant not in seen[key]["plants"]:
+                seen[key]["plants"].append(plant)
+            continue
+        item = {"id": key[0], "start": key[1].to_pydatetime(), "end": key[2].to_pydatetime(), "type": key[3], "limit": key[4], "plants": [plant]}
+        seen[key] = item
+        out.append(item)
+    return out
+
+
 def parse_isp1(path, registry):
     raw = pd.read_excel(path, sheet_name=0, header=None, engine="openpyxl")
     lab = [str(x) for x in raw[0].tolist()]
@@ -124,6 +164,7 @@ def parse_isp1(path, registry):
         "auction_crete": auction_crete,
         "auction_total": auc_total,
         "market_total": mkt_total,
+        "constraints": read_constraints(path, registry),
         "thermal_gap_mw": thermal_gap,
         "cbs_gap_mw": cbs_gap,
         "warnings": warnings,

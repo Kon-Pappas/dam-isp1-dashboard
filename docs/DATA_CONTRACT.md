@@ -20,3 +20,6 @@ One day:
 | `checks` | each check with `ok` and `detail` |
 
 Rules: `null` = not available (never 0); energy is GWh = sum(MW)/4000; hours are Greek clock; all text on the page is built from these numbers.
+
+Added on 22 Nov 2026: `constraints` (list of `{id, type, limit_mw, fuel, plants, from, to}`; `from` equal to `to` means all day; `null` when ISP1 or the sheet is missing), `hourly.isp1.constraints_mw` (sum of active minimum-output limits per hour), `summary.constraints_peak_mw`, `summary.windows` (`midday`, `evening`) and `summary.thermal_level_mw` (average DAM and ISP1 gas + lignite in those windows).
+

@@ -99,6 +99,21 @@ class BuildTests(unittest.TestCase):
         self.assertAlmostEqual(lv["midday"]["isp1"] - lv["midday"]["dam"],
                                d["thermal_change_mw"]["midday"]["lignite"] + d["thermal_change_mw"]["midday"]["gas"], delta=1)
 
+    def test_constraints_of_18_nov(self):
+        d = build("20261118")
+        cs = {c["plants"][0]: c for c in d["constraints"]}
+        self.assertEqual(set(cs), {"ALOUMINIO", "KORINTHOS_POWER", "PTOLEMAIDA5", "HERON_CC", "ALIVERI5"})
+        self.assertEqual((cs["PTOLEMAIDA5"]["limit_mw"], cs["PTOLEMAIDA5"]["from"], cs["PTOLEMAIDA5"]["to"]), (302.0, "11:00", "15:00"))
+        self.assertEqual(cs["PTOLEMAIDA5"]["fuel"], "lignite")
+        self.assertEqual(cs["KORINTHOS_POWER"]["fuel"], "gas")
+        self.assertAlmostEqual(d["summary"]["constraints_peak_mw"], 877, delta=1)
+        h = d["hourly"]["isp1"]["constraints_mw"]
+        self.assertAlmostEqual(h[0], 127.9, 1)           # only the all-day aluminium constraint at night
+        self.assertAlmostEqual(max(h), 876.9, 1)
+
+    def test_no_constraints_without_isp1(self):
+        self.assertIsNone(build("20260105")["constraints"])
+
     def test_borders_follow_the_auction_step(self):
         s = build("20261118")["summary"]["borders"]["steps_gwh"]
         self.assertAlmostEqual(s["dam"], 32.934, 2)
